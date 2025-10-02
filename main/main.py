@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 #from openai import OpenAI
-from dotenv import load_dotenv
-load_dotenv()
+#from dotenv import load_dotenv
+#load_dotenv()
 
 # Configuração do logo e título
 LOGO_PATH = "C:\\Users\\larissacampos\\Pictures\\Screenshots\\Captura de tela 2025-10-02 094322.png"  # ajuste o caminho se necessário
