@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime, timedelta
-from openai import OpenAI
+#from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
 
