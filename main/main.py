@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 #load_dotenv()
 
 # Configuração do logo e título
-LOGO_PATH = "C:\\Users\\larissacampos\\Pictures\\Screenshots\\Captura de tela 2025-10-02 094322.png"  # ajuste o caminho se necessário
+LOGO_PATH = "C:\Users\larissacampos\Documents\GitHub\SiteNivinha\Captura de tela 2025-10-02 094322.png"  # ajuste o caminho se necessário
 st.set_page_config(page_title="Gestão de Pacientes - Nivea Aquino", layout="wide", page_icon=LOGO_PATH)
 st.image(LOGO_PATH, width=150)
 st.title("Gestão de Pacientes - Nivea Aquino")
