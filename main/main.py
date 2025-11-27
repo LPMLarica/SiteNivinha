@@ -2,22 +2,23 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime, timedelta
-#from openai import OpenAI
-#from dotenv import load_dotenv
-#load_dotenv()
 
-# Configuração do logo e título
-LOGO_PATH = "C:\\Users\\larissacampos\\Documents\\GitHub\\SiteNivinha\\Captura de tela 2025-10-02 094322.png"  # ajuste o caminho se necessário
-st.set_page_config(page_title="Gestão de Pacientes - Nivea Aquino", layout="wide", page_icon=LOGO_PATH)
-st.image(LOGO_PATH, width=150)
+# LLaMA
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+
+# logo e título
+#LOGO_PATH = "C:\\Users\\larissacampos\\Documents\\GitHub\\SiteNivinha\\Captura de tela 2025-10-02 094322.png"
+st.set_page_config(page_title="Gestão de Pacientes - Nivea Aquino", layout="wide") #, page_icon=LOGO_PATH)
+#st.image(LOGO_PATH, width=150)
 st.title("Gestão de Pacientes - Nivea Aquino")
 
-# --- Arquivos CSV ---
 PATIENTS_FILE = "patients.csv"
 APPOINTMENTS_FILE = "appointments.csv"
 PAYMENTS_FILE = "payments.csv"
 
-# Funções para carregar e salvar CSVs
+# carregar e salvar CSVs
 def load_csv(file, columns):
     if os.path.exists(file):
         return pd.read_csv(file)
@@ -27,19 +28,21 @@ def load_csv(file, columns):
 def save_csv(df, file):
     df.to_csv(file, index=False)
 
-# Carregar dados
+# dados
 patients = load_csv(PATIENTS_FILE, ["Nome", "Sessoes", "Preco", "Horario", "Fixo"])
 appointments = load_csv(APPOINTMENTS_FILE, ["Paciente", "Data", "Horario", "Status", "Motivo"])
 payments = load_csv(PAYMENTS_FILE, ["Paciente", "Status", "Valor"])
 
-# --- Login ---
+# Login
 users = {"admin": "coxinha123", "Nivinha": "NivinhaEAnaVitoria341"}
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     user = st.text_input("Usuário")
     password = st.text_input("Senha", type="password")
+
     if st.button("Login"):
         if user in users and users[user] == password:
             st.session_state.logged_in = True
@@ -47,12 +50,13 @@ if not st.session_state.logged_in:
             st.rerun()
         else:
             st.error("Usuário ou senha incorretos")
+
     st.stop()
 
-# --- Menu lateral ---
-menu = st.sidebar.radio("Menu", ["Cadastro de Pacientes", "Monitoramento"])
+# Sidebar
+menu = st.sidebar.radio("Menu", ["Cadastro de Pacientes", "Monitoramento", "Chatbot"])
 
-# --- Cadastro de Pacientes ---
+# Cadastro de Pacientes
 if menu == "Cadastro de Pacientes":
     st.header("Cadastro de Pacientes")
     nome = st.text_input("Nome do Paciente")
@@ -87,7 +91,7 @@ if menu == "Cadastro de Pacientes":
     st.subheader("Pacientes Cadastrados")
     st.dataframe(patients)
 
-# --- Monitoramento ---
+# monitorar
 elif menu == "Monitoramento":
     st.header("Monitoramento de Pagamentos e Consultas")
 
@@ -96,10 +100,12 @@ elif menu == "Monitoramento":
         st.subheader("Pago")
         pagos = payments[payments["Status"] == "Pago"]
         st.write(pagos)
+
     with col2:
         st.subheader("Devedor")
         devedores = payments[payments["Status"] == "Devedor"]
         st.write(devedores)
+
     with col3:
         st.subheader("Parcelado")
         parcelados = payments[payments["Status"] == "Parcelado"]
@@ -107,6 +113,7 @@ elif menu == "Monitoramento":
 
     paciente_pagamento = st.selectbox("Selecionar paciente para atualizar pagamento", patients["Nome"])
     status_pagamento = st.selectbox("Novo status", ["Pago", "Devedor", "Parcelado"])
+
     if st.button("Atualizar Pagamento"):
         payments.loc[payments["Paciente"] == paciente_pagamento, "Status"] = status_pagamento
         save_csv(payments, PAYMENTS_FILE)
@@ -129,23 +136,55 @@ elif menu == "Monitoramento":
         save_csv(appointments, APPOINTMENTS_FILE)
         st.success("Consulta desmarcada!")
 
-# --- Chatbot ---
-#elif menu == "Chatbot":
-#    st.header("Chatbot Inteligente")
-    #client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-#
-    #if not client.api_key:
-    #    st.warning("Configure sua chave OpenAI com export OPENAI_API_KEY='sua_chave'")
-    #else:
-    #    user_input = st.text_input("Você:")
-    #    if st.button("Enviar") and user_input:
-    #        try:
-    #            response = client.chat.completions.create(
-    #            model="gpt-3.5-turbo",
-    #            messages=[{"role": "user", "content": user_input}]
-    #        )
-    #            
-    #            st.write("Chatbot:", response.choices[0].message.content)
-    #        except Exception as e:
-    #            st.error(f"Erro: {e}")
+# Chatt
+elif menu == "Chatbot":
+    st.header("Chatbot Inteligente (LLaMA Local)")
 
+    if "tokenizer" not in st.session_state:
+        st.session_state.tokenizer = None
+    if "model" not in st.session_state:
+        st.session_state.model = None
+
+    modelo_path = st.text_input(
+        "Caminho do modelo LLaMA (ex: meta-llama/Llama-3.2-3B-Instruct)",
+        value="meta-llama/Llama-3.2-3B-Instruct"
+    )
+
+    if st.button("Carregar Modelo"):
+        try:
+            st.session_state.tokenizer = AutoTokenizer.from_pretrained(modelo_path)
+            st.session_state.model = AutoModelForCausalLM.from_pretrained(
+                modelo_path,
+                device_map="auto",
+                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+            )
+            st.success("Modelo LLaMA carregado com sucesso!")
+        except Exception as e:
+            st.error(f"Erro ao carregar modelo: {e}")
+
+    if st.session_state.model is None:
+        st.stop()
+
+    user_input = st.text_input("Você:")
+
+    if st.button("Enviar") and user_input:
+        try:
+            tokens = st.session_state.tokenizer(
+                user_input, return_tensors="pt"
+            ).to(st.session_state.model.device)
+
+            resposta_tokens = st.session_state.model.generate(
+                **tokens,
+                max_new_tokens=300,
+                temperature=0.6,
+                do_sample=True
+            )
+
+            resposta = st.session_state.tokenizer.decode(
+                resposta_tokens[0], skip_special_tokens=True
+            )
+
+            st.write("Chatbot:", resposta)
+
+        except Exception as e:
+            st.error(f"Erro ao gerar resposta: {e}")
